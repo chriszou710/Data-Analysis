@@ -1,0 +1,312 @@
+---
+title: "FIT5145Assignment3"
+author: "YuxiangZou"
+date: "2024-05-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#load library
+```{r}
+library(tidyverse)
+library(readr)
+library(stringr)
+library(lubridate)
+library(randomForest)
+library(caret)
+library(zoo)
+library(xgboost)
+library(dplyr)
+```
+
+#load csv
+```{r}
+weather_data <- read_csv("D:/FIT5145Assignment3/FIT5145Assignment3/melbourne_weather_data.csv")
+agriculture_data <- read_csv("D:/FIT5145Assignment3/FIT5145Assignment3/agricultural_data.csv")
+soil_data <- read_csv("D:/FIT5145Assignment3/FIT5145Assignment3/soil_data.csv")
+```
+
+
+
+#Descriptive statistics for agricultural data
+```{r}
+agriculture_summary <- agriculture_data %>% summarise(
+  Wheat_Yield_Mean = mean(Wheat_yield, na.rm = TRUE),
+  Wheat_Yield_SD = sd(Wheat_yield, na.rm = TRUE),
+  Wheat_Yield_Min = min(Wheat_yield, na.rm = TRUE),
+  Wheat_Yield_Max = max(Wheat_yield, na.rm = TRUE),
+  Barley_Yield_Mean = mean(Barley_yield, na.rm = TRUE),
+  Barley_Yield_SD = sd(Barley_yield, na.rm = TRUE),
+  Barley_Yield_Min = min(Barley_yield, na.rm = TRUE),
+  Barley_Yield_Max = max(Barley_yield, na.rm = TRUE),
+  Rapeseed_Yield_Mean = mean(Rapeseed_yield, na.rm = TRUE),
+  Rapeseed_Yield_SD = sd(Rapeseed_yield, na.rm = TRUE),
+  Rapeseed_Yield_Min = min(Rapeseed_yield, na.rm = TRUE),
+  Rapeseed_Yield_Max = max(Rapeseed_yield, na.rm = TRUE)
+)
+```
+#Descriptive statistics for weather data
+```{r}
+weather_summary <- weather_data %>% summarise(
+  Temperature_Mean = mean(Temperature, na.rm = TRUE),
+  Temperature_SD = sd(Temperature, na.rm = TRUE),
+  Temperature_Min = min(Temperature, na.rm = TRUE),
+  Temperature_Max = max(Temperature, na.rm = TRUE),
+  Precipitation_Mean = mean(Precipitation, na.rm = TRUE),
+  Precipitation_SD = sd(Precipitation, na.rm = TRUE),
+  Precipitation_Min = min(Precipitation, na.rm = TRUE),
+  Precipitation_Max = max(Precipitation, na.rm = TRUE),
+  Humidity_Mean = mean(Humidity, na.rm = TRUE),
+  Humidity_SD = sd(Humidity, na.rm = TRUE),
+  Humidity_Min = min(Humidity, na.rm = TRUE),
+  Humidity_Max = max(Humidity, na.rm = TRUE)
+)
+```
+
+
+#Descriptive Statistics for Soil Data
+```{r}
+soil_summary <- soil_data %>% summarise(
+  Soil_pH_Mean = mean(Soil_pH, na.rm = TRUE),
+  Soil_pH_SD = sd(Soil_pH, na.rm = TRUE),
+  Soil_pH_Min = min(Soil_pH, na.rm = TRUE),
+  Soil_pH_Max = max(Soil_pH, na.rm = TRUE),
+  Organic_Matter_Mean = mean(Organic_matter, na.rm = TRUE),
+  Organic_Matter_SD = sd(Organic_matter, na.rm = TRUE),
+  Organic_Matter_Min = min(Organic_matter, na.rm = TRUE),
+  Organic_Matter_Max = max(Organic_matter, na.rm = TRUE),
+  Nitrogen_Mean = mean(Nitrogen, na.rm = TRUE),
+  Nitrogen_SD = sd(Nitrogen, na.rm = TRUE),
+  Nitrogen_Min = min(Nitrogen, na.rm = TRUE),
+  Nitrogen_Max = max(Nitrogen, na.rm = TRUE),
+  Phosphorus_Mean = mean(Phosphorus, na.rm = TRUE),
+  Phosphorus_SD = sd(Phosphorus, na.rm = TRUE),
+  Phosphorus_Min = min(Phosphorus, na.rm = TRUE),
+  Phosphorus_Max = max(Phosphorus, na.rm = TRUE),
+  Potassium_Mean = mean(Potassium, na.rm = TRUE),
+  Potassium_SD = sd(Potassium, na.rm = TRUE),
+  Potassium_Min = min(Potassium, na.rm = TRUE),
+  Potassium_Max = max(Potassium, na.rm = TRUE)
+)
+```
+
+#Bar chart of wheat production over the years
+```{r}
+library(ggplot2)
+
+ggplot(agriculture_data, aes(x = as.Date(Date), y = Wheat_yield, fill = Wheat_yield)) +
+  geom_bar(stat = "identity") +
+  scale_fill_gradient(low = "blue", high = "red") +
+  labs(title = "Wheat Yield Over Years", x = "Year", y = "Wheat Yield", fill = "Yield") +
+  theme_minimal()
+
+
+```
+#Rapeseed_Yield line chart
+```{r}
+ggplot(agriculture_data, aes(x = as.Date(Date), y = Rapeseed_yield)) +
+  geom_line(color = "darkgreen") +
+  labs(title = "Rapeseed Yield Over Years", x = "Year", y = "Rapeseed Yield") +
+  theme_minimal()
+```
+
+#Barley_Yield line chart
+```{r}
+ggplot(agriculture_data, aes(x = as.Date(Date), y = Barley_yield)) +
+  geom_line(color = "darkblue") +
+  labs(title = "Barley Yield Over Years", x = "Year", y = "Barley Yield") +
+  theme_minimal()
+```
+
+
+
+
+
+
+
+
+
+#Weather data line chart
+```{r}
+ggplot(weather_data, aes(x = as.Date(Date))) +
+  geom_line(aes(y = Temperature, color = "Temperature"), linewidth = 1) +
+  geom_line(aes(y = Precipitation, color = "Precipitation"), linewidth = 1) +
+  geom_line(aes(y = Humidity, color = "Humidity"), linewidth = 1) +
+  scale_color_manual(values = c("Temperature" = "blue",
+                                "Precipitation" = "green",
+                                "Humidity" = "red")) +
+  labs(title = "Weather Data Trends",
+       x = "Date",
+       y = "Value",
+       color = "Parameters") +
+  theme_minimal()
+```
+#Line chart of soil data
+```{r}
+ggplot(soil_data, aes(x = as.Date(Date))) +
+  geom_line(aes(y = Soil_pH, color = "Soil pH"), linewidth = 1) +
+  geom_line(aes(y = Organic_matter, color = "Organic Matter"), linewidth = 1) +
+  geom_line(aes(y = Nitrogen, color = "Nitrogen"), linewidth = 1) +
+  geom_line(aes(y = Phosphorus, color = "Phosphorus"), linewidth = 1) +
+  geom_line(aes(y = Potassium, color = "Potassium"), linewidth = 1) +
+  scale_color_manual(values = c("Soil pH" = "blue",
+                                "Organic Matter" = "green",
+                                "Nitrogen" = "red",
+                                "Phosphorus" = "purple",
+                                "Potassium" = "orange")) +
+  labs(title = "Soil Data Trends",
+       x = "Date",
+       y = "Value",
+       color = "Parameters") +
+  theme_minimal()
+```
+
+#Using random forest regression analysis
+
+
+#convert date format
+```{r}
+agriculture_data$Date <- as.Date(agriculture_data$Date)
+weather_data$Date <- as.Date(weather_data$Date)
+soil_data$Date <- as.Date(soil_data$Date)
+```
+
+#Extract year and month information
+```{r}
+weather_data <- weather_data %>%
+  mutate(Year = year(Date), Month = month(Date))
+soil_data <- soil_data %>%
+  mutate(Year = year(Date), Month = month(Date))
+```
+
+#Aggregate weather data to monthly 
+```{r}
+monthly_weather_data <- weather_data %>%
+  group_by(Year, Month) %>%
+  summarize(Temperature = mean(Temperature, na.rm = TRUE),
+            Precipitation = mean(Precipitation, na.rm = TRUE),
+            Humidity = mean(Humidity, na.rm = TRUE))
+```
+
+#monthly soil data
+```{r}
+monthly_soil_data <- soil_data %>%
+  group_by(Year, Month, Region) %>%
+  summarize(Soil_pH = mean(Soil_pH, na.rm = TRUE),
+            Organic_matter = mean(Organic_matter, na.rm = TRUE),
+            Nitrogen = mean(Nitrogen, na.rm = TRUE),
+            Phosphorus = mean(Phosphorus, na.rm = TRUE),
+            Potassium = mean(Potassium, na.rm = TRUE))
+```
+
+#Assume monthly weightings and downgrade to monthly production based on annual production trends
+```{r}
+wheat_weights <- c(0.1, 0.02, 0.03, 0.03, 0.02, 0.02, 0.03, 0.02, 0.03, 0.08, 0.35, 0.25)
+barley_weights <- c(0.07, 0.03, 0.1, 0.07, 0.05, 0.04, 0.11, 0.09, 0.08, 0.07, 0.15, 0.14)
+rapeseed_weights <- c(0.06, 0.04, 0.07, 0.1, 0.04, 0.05, 0.09, 0.11, 0.07, 0.08, 0.13, 0.16)
+monthly_agriculture_data <- agriculture_data %>%
+  mutate(Year = year(Date)) %>%
+  uncount(weights = 12, .remove = FALSE) %>%
+  mutate(Month = rep(1:12, times = nrow(agriculture_data))) %>%
+  group_by(Year) %>%
+  mutate(
+    Wheat_yield = Wheat_yield * wheat_weights[Month],
+    Barley_yield = Barley_yield * barley_weights[Month],  
+    Rapeseed_yield = Rapeseed_yield * rapeseed_weights[Month] 
+  ) %>%
+  ungroup() %>%
+  mutate(Date = as.Date(paste(Year, Month, "01", sep = "-")))
+
+```
+
+#merge monthly soil and weather data
+```{r}
+monthly_data <- monthly_agriculture_data %>%
+  left_join(monthly_weather_data, by = c("Year", "Month")) %>%
+  left_join(monthly_soil_data, by = c("Year", "Month"))
+monthly_data <- na.omit(monthly_data)
+```
+
+## Split the data set into training set and test set
+```{r}
+set.seed(123)
+train_indices <- createDataPartition(monthly_data$Wheat_yield, p = 0.8, list = FALSE)
+train_data <- monthly_data[train_indices, ]
+test_data <- monthly_data[-train_indices, ]
+```
+
+#Train random forest regression model
+```{r}
+rf_model <- randomForest(Wheat_yield ~ Temperature + Precipitation + Humidity + Soil_pH + Organic_matter + Nitrogen + Phosphorus + Potassium, data = train_data, ntree = 500, mtry = 3)
+```
+
+
+#Predicting one month future agricultural yields
+```{r}
+future_weather <- data.frame(
+  Month = as.Date("2025-01-01"), 
+  Temperature = 17,  
+  Precipitation =4 ,  
+  Humidity = 85  
+)
+
+future_soil <- data.frame(
+  Month = as.Date("2025-01-01"),  
+  Soil_pH = 5.3,  
+  Organic_matter = 2.7, 
+  Nitrogen = 0.88,  
+  Phosphorus = 0.08, 
+  Potassium = 0.20  
+)
+
+future_data <- future_soil %>%
+  left_join(future_weather, by = "Month")
+
+future_prediction <- predict(rf_model, newdata = future_data)
+cat("Predicted Wheat Yield: ", future_prediction, "\n")
+```
+#predict one year
+```{r}
+
+
+# Set weather data for the next year
+future_weather_year <- data.frame(
+  Month = seq(as.Date("2025-01-01"), as.Date("2025-12-01"), by = "month"),
+  Temperature = c(17, 16, 18, 17, 19, 17, 17, 16, 17, 16, 17, 15),  
+  Precipitation = c(4, 9, 10, 8, 7, 10, 11, 9, 7, 8, 8, 8),            
+  Humidity = c(85, 69, 73, 66, 64, 62, 61, 66, 67, 68, 65, 64)      
+)
+
+#set soil data for the next year
+future_soil_year <- data.frame(
+  Month = seq(as.Date("2025-01-01"), as.Date("2025-12-01"), by = "month"),
+  Soil_pH = c(5.2, 8.3, 7.4, 6.8, 5.12, 5.13, 4.73, 7.96, 6.9, 7.3, 5.4, 8.3),  
+  Organic_matter = c(2.7, 2.7, 4.7, 1.9, 2.8, 3.1, 3.2, 4.1, 1.3, 2.7, 1.8, 1.7),  
+  Nitrogen = c(0.85, 0.86, 0.87, 0.88, 0.43, 0.36, 0.82, 0.56, 0.55, 0.81, 0.87, 0.86),  
+  Phosphorus = c(0.07, 0.08, 0.09, 0.07, 0.11, 0.12, 0.13, 0.12, 0.11, 0.10, 0.09, 0.08),  
+  Potassium = c(0.20, 1.72, 1.20, 1.21, 1.22, 0.83, 0.54, 0.95, 0.34, 1.91, 1.37, 1.25)  
+)
+
+#Merging future weather and soil data
+future_year_data <- future_soil_year %>%
+  left_join(future_weather_year, by = "Month")
+
+#Forecasting agricultural production for the next year
+future_year_predictions <- predict(rf_model, newdata = future_year_data)
+
+#Add prediction results to the data frame
+future_year_data$Predicted_Yield <- future_year_predictions
+
+# chart
+ggplot(future_year_data, aes(x = Month, y = Predicted_Yield)) +
+  geom_line(color = "blue") +
+  geom_point(color = "red") +
+  labs(title = "Predicted wheat Yield for 2025", x = "Month", y = "Predicted Yield") +
+  theme_minimal()
+
+```
+
+
